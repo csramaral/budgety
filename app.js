@@ -65,7 +65,23 @@ let budgetController = ( () => {
                 expenses: data.totals.exp,
                 percentage: data.percentage
             }
-        } ,
+        },
+
+        deleteItem: (type, id) => {
+
+            // Retorna um array com os ids dos elementos
+            let ids = data.allItems[type].map((current) => {
+                return current.id;
+            });
+
+            let index = ids.indexOf(id);
+            
+            if (index != -1) {
+                // Atualiza o total
+                data.totals[type] -= data.allItems[type][index].value;
+                data.allItems[type].splice(index, 1);
+            }
+        },
 
         testing: () => {
             console.log(data);
@@ -88,7 +104,12 @@ let UIController = ( () => {
         incomesTotalClassName: 'budget__income--value',
         expensesTotalClassName: 'budget__expenses--value',
         budgetValueClassName: 'budget__value',
-        expensesPctField: 'budget__expenses--percentage'
+        expensesPctField: 'budget__expenses--percentage',
+        containerClass: 'container'
+    }
+
+    let setDescriptionFocus = () => {
+        document.querySelector(DOMstrings.inputType).focus();
     }
 
     return {
@@ -116,6 +137,8 @@ let UIController = ( () => {
 
             let expPct = document.getElementsByClassName(DOMstrings.expensesPctField)[0];
             expPct.textContent = ' %';
+
+            setDescriptionFocus();
         },
 
         addListItem: (item) => {
@@ -123,10 +146,10 @@ let UIController = ( () => {
 
             if (item.constructor.name === 'Income') {
                 element = document.getElementsByClassName(DOMstrings.incomesList)[0];
-                itemType = 'income';
+                itemType = 'inc';
             } else if (item.constructor.name === 'Expense') {
                 element = document.getElementsByClassName(DOMstrings.expensesList)[0];
-                itemType = 'expense';
+                itemType = 'exp';
             }
 
             html = `<div class="item clearfix" id="${itemType}-${item.id}">\
@@ -142,23 +165,25 @@ let UIController = ( () => {
                     </div>`;
 
             element.insertAdjacentHTML('beforeend', html);
+            setDescriptionFocus();
+        },
+
+        deleteListItem: (selectorId) => {
+            item = document.getElementById(selectorId);
+
+            item.parentNode.removeChild(item);
+
+            setDescriptionFocus();
         },
 
         displayBudget: (obj) => {
-            let itemSign;
-
-            if (obj.budget < 0) {
-                itemSign = '-';
-            } else {
-                itemSign = '+'
-            }
-
+            
             document.getElementsByClassName(DOMstrings.incomesTotalClassName)[0]
                 .textContent = `+ ${obj.incomes.toFixed(2)}`;
             document.getElementsByClassName(DOMstrings.expensesTotalClassName)[0]
                 .textContent = `- ${obj.expenses.toFixed(2)}`;
             document.getElementsByClassName(DOMstrings.budgetValueClassName)[0]
-                .textContent = `${itemSign} ${obj.budget.toFixed(2)}`;
+                .textContent = `${obj.budget.toFixed(2)}`;
             if (obj.percentage > 0) {
                 document.getElementsByClassName(DOMstrings.expensesPctField)[0]
                     .textContent = `${obj.percentage}%`;
@@ -192,6 +217,9 @@ let controller = ( (budgetCtrl, UICtrl) => {
                 ctrlAddItem();
             }
         });
+
+        document.getElementsByClassName(DOMstr.containerClass)[0]
+            .addEventListener('click', ctrlDeleteItem);
     };
     
     let ctrlAddItem = () => {
@@ -220,6 +248,28 @@ let controller = ( (budgetCtrl, UICtrl) => {
 
         // 5. Display the budget
         UICtrl.displayBudget(budget);
+    };
+
+    let ctrlDeleteItem = (event) => {
+        let itemID, splitID, type, id;
+
+        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
+
+        if (itemID) {
+            splitID = itemID.split('-');
+            type = splitID[0];
+            id = parseInt(splitID[1]);
+
+            // 1. delete the item from the intrastructure
+            budgetController.deleteItem(type, id);
+            
+            // 2. delete from the UI
+            UIController.deleteListItem(itemID);
+
+            // 3. Update and show the new budget
+            updateBudget();
+        }
+
     };
 
     return {
